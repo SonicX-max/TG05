@@ -27,9 +27,11 @@ def get_crypto_price(crypto: str, fiat: str):
 # Команда /start
 @dp.message(Command("start"))
 async def start(message: Message):
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.add(
-        types.KeyboardButton(text="Курсы криптовалют")
+    keyboard = types.ReplyKeyboardMarkup(
+        keyboard=[
+            [types.KeyboardButton(text="Курсы криптовалют"), types.KeyboardButton(text="Конвертация")]
+        ],
+        resize_keyboard=True
     )
     await message.answer(
         f"Привет, {message.from_user.first_name}! Я крипто-бот.\n\n"
@@ -37,50 +39,44 @@ async def start(message: Message):
         reply_markup=keyboard
     )
 
-# Команда /price
-@dp.message(Command("price"))
-async def price(message: Message):
-    args = message.text.split()
-    if len(args) != 3:
-        await message.answer("Использование: /price [CRYPTO] [FIAT]\nПример: /price BTC USD")
-        return
-    crypto, fiat = args[1], args[2]
-    price = get_crypto_price(crypto, fiat)
-    if price:
-        await message.answer(f"Текущий курс {crypto.upper()} в {fiat.upper()}: {price}")
-    else:
-        await message.answer("Не удалось получить данные. Проверьте правильность ввода.")
-
-# Команда /convert
-@dp.message(Command("convert"))
-async def convert(message: Message):
-    args = message.text.split()
-    if len(args) != 4:
-        await message.answer("Использование: /convert [AMOUNT] [CRYPTO] [FIAT]\nПример: /convert 1 BTC USD")
-        return
-    try:
-        amount = float(args[1])
-        crypto, fiat = args[2], args[3]
-        price = get_crypto_price(crypto, fiat)
-        if price:
-            total = round(amount * price, 2)
-            await message.answer(f"{amount} {crypto.upper()} = {total} {fiat.upper()}")
-        else:
-            await message.answer("Не удалось получить данные. Проверьте правильность ввода.")
-    except ValueError:
-        await message.answer("Сумма должна быть числом.")
-
 # Обработка кнопок
 @dp.message(lambda msg: msg.text == "Курсы криптовалют")
 async def handle_prices_button(message: Message):
-    await message.answer("Введите команду /price [CRYPTO] [FIAT], чтобы узнать курс.")
+    await message.answer("Введите криптовалюту и фиат для получения курса.\nПример: BTC USD")
+
+@dp.message(lambda msg: msg.text == "Конвертация")
+async def handle_conversion_button(message: Message):
+    await message.answer("Введите количество, криптовалюту и фиат для конвертации.\nПример: 1 BTC USD")
+
+@dp.message()
+async def handle_input(message: Message):
+    args = message.text.split()
+    if len(args) == 2:  # Для получения курса
+        crypto, fiat = args[0], args[1]
+        price = get_crypto_price(crypto, fiat)
+        if price:
+            await message.answer(f"Текущий курс {crypto.upper()} в {fiat.upper()}: {price}")
+        else:
+            await message.answer("Не удалось получить данные. Проверьте правильность ввода.")
+    elif len(args) == 3:  # Для конвертации
+        try:
+            amount = float(args[0])
+            crypto, fiat = args[1], args[2]
+            price = get_crypto_price(crypto, fiat)
+            if price:
+                total = round(amount * price, 2)
+                await message.answer(f"{amount} {crypto.upper()} = {total} {fiat.upper()}")
+            else:
+                await message.answer("Не удалось получить данные. Проверьте правильность ввода.")
+        except ValueError:
+            await message.answer("Сумма должна быть числом.")
+    else:
+        await message.answer("Неправильный формат ввода. Попробуйте снова.")
 
 # Установка команд в меню
 async def set_commands():
     commands = [
-        types.BotCommand(command="start", description="Начало работы"),
-        types.BotCommand(command="price", description="Курс криптовалют"),
-        types.BotCommand(command="convert", description="Конвертация криптовалют")
+        types.BotCommand(command="start", description="Начало работы")
     ]
     await bot.set_my_commands(commands)
 
